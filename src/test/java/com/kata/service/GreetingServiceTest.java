@@ -1,52 +1,63 @@
 package com.kata.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.*;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 
 import com.kata.customers.CustomerRespository;
 import com.kata.notification.Mailer;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
+import org.mockito.Mockito;
 
 class GreetingServiceTest {
 
-    class MailerSpy extends Mailer {
-        public String greetingValue = "";
+    public static final String NAME = "World";
+    private CustomerRespository repositoryStub;
 
-        @Override
-        public void send(String greeting) {
-            greetingValue = greeting;
-        }
+    private Mailer mailerMock;
+
+    private GreetingService greetingService;
+
+    @BeforeEach
+    void setUp() {
+        repositoryStub = Mockito.mock(CustomerRespository.class);
+        mailerMock = Mockito.mock(Mailer.class);
+        greetingService = new GreetingService(repositoryStub, mailerMock);
     }
 
     @Test
     void should_send_greeting_when_birthay_is_today() {
         // given
-        CustomerRespository customerRespositoryStub = createCustomerRespositoryStub(true);
-        MailerSpy mailerSpy = new MailerSpy();
-        GreetingService greetingService = new GreetingService(customerRespositoryStub, mailerSpy);
+        when(repositoryStub.birthdayIsToday(NAME)).thenReturn(true);
         // when
-        greetingService.greeting("World");
+        greetingService.greeting(NAME);
         // then
-        assertEquals("Happy birthday World!", mailerSpy.greetingValue);
+        verify(mailerMock).send("Happy birthday " + NAME + "!");
     }
 
     @Test
     void should_send_greeting_when_birthay_is_not_today() {
         // given
-        CustomerRespository customerRespositoryStub = createCustomerRespositoryStub(false);
-        MailerSpy mailerSpy = new MailerSpy();
-        GreetingService greetingService = new GreetingService(customerRespositoryStub, mailerSpy);
+        when(repositoryStub.birthdayIsToday(NAME)).thenReturn(false);
         // when
-        greetingService.greeting("World");
+        greetingService.greeting(NAME);
         // then
-        assertEquals("Good morning World.", mailerSpy.greetingValue);
+        verify(mailerMock).send("Good morning " + NAME + ".");
     }
 
-    private static CustomerRespository createCustomerRespositoryStub(boolean isBirthdayToday) {
-        return new CustomerRespository() {
-            @Override
-            public boolean birthdayIsToday(String name) {
-                return isBirthdayToday;
-            }
-        };
+    @Test
+    void should_say_happy_birthday_when_birthday_with_captors() {
+        //given
+        when(repositoryStub.birthdayIsToday(NAME)).thenReturn(true);
+        //when
+        greetingService.greeting(NAME);
+        //then
+        ArgumentCaptor<String> greetingCaptor = ArgumentCaptor.forClass(String.class);
+        verify(mailerMock).send(greetingCaptor.capture());
+        assertThat(greetingCaptor.getValue()).isEqualTo("Happy birthday " + NAME + "!");
     }
+
 }
